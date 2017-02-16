@@ -32,26 +32,29 @@ RUN mkdir -p ${CASSANDRA_HOME} \
              ${CASSANDRA_LOG} \
              ${CASSANDRA_COMMITLOG}
 
-RUN echo "proxy=$HTTP_PROXY"
 ## Install it and reduce container size
 ### Apache Cassandra
 RUN apk --update --no-cache add wget ca-certificates tar \
     && wget http://apache.cs.utah.edu/cassandra/${CASSANDRA_VERSION}/apache-cassandra-${CASSANDRA_VERSION}-bin.tar.gz -P /tmp \
     && tar -xvzf /tmp/apache-cassandra-${CASSANDRA_VERSION}-bin.tar.gz -C /tmp/ \
-    && mv /tmp/apache-cassandra-${CASSANDRA_VERSION} ${CASSANDRA_HOME}/ \
+    && mv /tmp/apache-cassandra-${CASSANDRA_VERSION}/* ${CASSANDRA_HOME}/  \
     && apk --purge del wget ca-certificates tar  \
-    && rm -r /tmp/apache-cassandra-${CASSANDRA_VERSION}-bin.tar.gz /var/cache/apk/*
+    && rm -r /tmp/apache-cassandra-${CASSANDRA_VERSION} \
+             /tmp/apache-cassandra-${CASSANDRA_VERSION}-bin.tar.gz \
+             /var/cache/apk/*
 
 # Setup entrypoint and bash to execute it
 COPY ./docker-entrypoint.sh /docker-entrypoint.sh
-RUN apk add --update --no-cache bash 
+RUN echo "proxy=$HTTP_PROXY"
+RUN apk add --update --no-cache bash \
     && chmod +x /docker-entrypoint.sh
 ENTRYPOINT ["/bin/bash", "/docker-entrypoint.sh"]
 
 # Add default config
-RUN mv ${CASSANDRA_HOME}/conf/* ${CASSANDRA_CONFIG}
+RUN ls -l /opt/cassandra \
+    && mv ${CASSANDRA_HOME}/conf/* ${CASSANDRA_CONFIG}
 #COPY ./conf/* ${CASSANDRA_CONFIG}/
-#RUN chmod +x ${CASSANDRA_CONFIG}/*.sh
+RUN chmod +x ${CASSANDRA_CONFIG}/*.sh
 
 # https://issues.apache.org/jira/browse/CASSANDRA-11661
 RUN sed -ri 's/^(JVM_PATCH_VERSION)=.*/\1=25/' /etc/cassandra/cassandra-env.sh
